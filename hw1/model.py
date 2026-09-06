@@ -68,11 +68,10 @@ def featurize(sentence: str, embeddings: gensim.models.keyedvectors.KeyedVectors
         except KeyError:
             pass
 
-    # TODO: complete the function to compute the average embedding of the sentence
-    # your return should be
-    # None - if the vector sequence is empty, i.e. the sentence is empty or None of the words in the sentence is in the embedding vocabulary
-    # A torch tensor of shape (embed_dim,) - the average word embedding of the sentence
-    # Hint: follow the hints in the pdf description
+    if len(vectors) == 0:
+        return None
+
+    return torch.from_numpy(np.mean(vectors, axis=0))
 
 
 def create_tensor_dataset(raw_data: Dict[str, List[Union[int, str]]],
@@ -80,10 +79,11 @@ def create_tensor_dataset(raw_data: Dict[str, List[Union[int, str]]],
     all_features, all_labels = [], []
     for text, label in tqdm(zip(raw_data['text'], raw_data['label'])):
 
-        # TODO: complete the for loop to featurize each sentence
-        # only add the feature and label to the list if the feature is not None
-
-        # your code ends here
+        feature = featurize(text, embeddings)
+        if feature is None:
+            continue
+        all_features.append(feature)
+        all_labels.append(label)
 
     # stack all features and labels into two single tensors and create a TensorDataset
     features_tensor = torch.stack(all_features)
@@ -112,18 +112,12 @@ class SentimentClassifier(nn.Module):
         self.embed_dim = embed_dim
         self.num_classes = num_classes
 
-        # TODO: define the linear layer
-        # Hint: follow the hints in the pdf description
-
-        # your code ends here
+        self.linear = nn.Linear(embed_dim, num_classes)
 
         self.loss = nn.CrossEntropyLoss(reduction='mean')
 
     def forward(self, inp):
-        # TODO: complete the forward function
-        # Hint: follow the hints in the pdf description
-
-        # your code ends here
+        logits = self.linear(inp)
 
         return logits
 
@@ -135,12 +129,9 @@ Chain Everything Together: Training and Evaluation
 
 def accuracy(logits: torch.FloatTensor, labels: torch.LongTensor) -> torch.FloatTensor:
     assert logits.shape[0] == labels.shape[0]
-    # TODO: complete the function to compute the accuracy
-    # Hint: follow the hints in the pdf description, the return should be a tensor of 0s and 1s with the same shape as labels
-    # labels is a tensor of shape (batch_size,)
-    # logits is a tensor of shape (batch_size, num_classes)
+    predictions = torch.argmax(logits, dim=1)
 
-    return ...
+    return (predictions == labels).float()
 
 
 def evaluate(model: SentimentClassifier, eval_dataloader: DataLoader) -> Tuple[float, float]:
